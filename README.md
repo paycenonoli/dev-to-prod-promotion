@@ -1,169 +1,186 @@
-Dev-to-Prod Promotion Platform
+🚀 Dev-to-Prod Promotion Platform
 
-A hands-on, production-style DevOps project demonstrating how
-application code moves from source control → CI → container registry →
-GitOps → Kubernetes Dev → Staging → Production, with infrastructure
-managed separately through Terraform + Terragrunt.
+Production-style CI/CD + GitOps platform demonstrating application
+promotion from source code to production.
 
-The project uses one K3s cluster with separate Kubernetes namespaces for
-dev, staging, and prod. This keeps the lab lightweight while
-preserving the important promotion, approval, artifact immutability, and
-reconciliation patterns used in larger environments.
 
-1. Project Goals
 
-This project demonstrates:
 
-Git-based application development
 
-Docker containerization
 
-Jenkins CI/CD
 
-Immutable container image tagging
+
+
+
+Core delivery path
+
+GitHub → Jenkins → Docker → Amazon ECR → GitOps PR → Argo CD → Kubernetes
+
+The project demonstrates how the same immutable application artifact
+is promoted through Development → Staging → Production, while
+infrastructure is managed separately with Terraform + Terragrunt.
+
+📌 Project at a Glance
+
+Area
+
+Technology
+
+Purpose
+
+Source control
+
+GitHub
+
+Application and GitOps repositories
+
+CI
+
+Jenkins
+
+Build, test, package and publish
+
+Containers
+
+Docker
+
+Package microservices
+
+Registry
 
 Amazon ECR
 
-Helm packaging
+Store immutable images
 
-Environment-specific Helm values
+Packaging
 
-GitOps with a separate repository
+Helm
 
-Pull-request based environment promotion
+Reusable Kubernetes deployment templates
 
-Argo CD continuous delivery
+CD / GitOps
 
-Argo CD automated sync and self-healing
+Argo CD
 
-Kubernetes namespaces as environment boundaries
+Reconcile Git state to Kubernetes
 
-Traefik Ingress
+Kubernetes
 
-Terraform infrastructure provisioning
+K3s
+
+Lightweight Kubernetes platform
+
+Ingress
+
+Traefik
+
+External HTTP routing
+
+IaC
+
+Terraform
+
+Provision AWS infrastructure
+
+IaC orchestration
+
+Terragrunt
+
+Organize Terraform environments/modules
+
+State
+
+Amazon S3
+
+Remote Terraform state
+
+Change control
+
+GitHub PRs
+
+Promotion and approval gates
+
+🏗️ Architecture
+
+Application Delivery
+
+flowchart LR
+    A["👨‍💻 Developer"] --> B["GitHub<br/>Application Repo"]
+    B --> C["Jenkins CI"]
+    C --> D["Docker Build & Test"]
+    D --> E["Amazon ECR<br/>Immutable Images"]
+    E --> F["GitOps PR"]
+    F --> G["GitHub<br/>GitOps Repo"]
+    G --> H["Argo CD"]
+    H --> I["K3s Cluster"]
+
+    I --> J["DEV<br/>microservices-dev"]
+    I --> K["STAGING<br/>microservices-staging"]
+    I --> L["PRODUCTION<br/>microservices-prod"]
+
+Infrastructure
+
+flowchart LR
+    A["Terraform Modules"] --> B["Terragrunt"]
+    B --> C["AWS Infrastructure"]
+
+    C --> D["VPC"]
+    C --> E["IAM"]
+    C --> F["Amazon ECR"]
+    C --> G["Kubernetes Infrastructure"]
+
+    B --> H["Amazon S3<br/>Remote State + Locking"]
+
+Key separation: Jenkins creates/publishes application artifacts.
+Argo CD deploys and reconciles them. Terraform/Terragrunt manages
+infrastructure.
+
+🎯 Project Goals
+
+This project was built to demonstrate practical Senior DevOps concepts:
+
+CI/CD pipeline design
+
+Docker image lifecycle
+
+Immutable artifacts
+
+AWS ECR
+
+Kubernetes
+
+Helm
+
+GitOps
+
+Argo CD
+
+Pull-request based promotion
+
+Environment separation
+
+Infrastructure as Code
+
+Terraform remote state
 
 Terragrunt orchestration
 
-Remote Terraform state in Amazon S3
+IAM troubleshooting
 
-S3 versioning, encryption, and native state locking
+Deployment troubleshooting
 
-IAM troubleshooting and least privilege
+Rollback strategy
 
-Production-style troubleshooting and incident recovery
+Production change control
 
-2. High-Level Architecture
+📦 Repository Structure
 
-                         APPLICATION DELIVERY
-
-┌──────────────────────┐
-│      Developer       │
-│  Source Code Change  │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│       GitHub         │
-│  Application Repo    │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│       Jenkins        │
-│                      │
-│  Checkout            │
-│  Test                │
-│  Docker Build        │
-│  Git SHA Tag         │
-│  Push to ECR         │
-│  Create GitOps PR    │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│      Amazon ECR      │
-│                      │
-│ frontend:07eda39     │
-│ product-service:...  │
-│ order-service:...    │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────────────┐
-│       GitHub GitOps Repo     │
-│                              │
-│ Helm charts                  │
-│ Environment values           │
-│ Argo CD Applications         │
-└──────────────┬───────────────┘
-               │
-               │ PR → review → merge
-               ▼
-        ┌───────────────┐
-        │    Argo CD    │
-        │ Sync + Heal   │
-        └───────┬───────┘
-                │
-                ▼
-┌──────────────────────────────────────────────┐
-│                 K3s Cluster                  │
-│                                              │
-│  microservices-dev       ← DEV              │
-│  microservices-staging   ← STAGING          │
-│  microservices-prod      ← PRODUCTION       │
-│                                              │
-│  Traefik Ingress Controller                  │
-└──────────────────────────────────────────────┘
-
-3. Infrastructure Architecture
-
-Application delivery and infrastructure management are separate
-concerns.
-
-Terraform Modules
-       │
-       ▼
-   Terragrunt
-       │
-       ▼
- AWS Infrastructure
-       │
-       ├── VPC
-       ├── IAM
-       ├── ECR
-       └── Kubernetes infrastructure
-
-Terraform vs Terragrunt
-
-Terraform is the infrastructure provisioning engine. It creates and
-manages resources such as VPCs, IAM, ECR, and Kubernetes infrastructure.
-
-Terragrunt is the orchestration/configuration layer around
-Terraform. It helps with:
-
-DRY configuration
-
-Environment organization
-
-Remote state configuration
-
-Module reuse
-
-Dependencies
-
-Running infrastructure units safely
-
-Interview answer:
-
-Terraform defines how infrastructure is created. Terragrunt helps
-organize, configure, and orchestrate Terraform across environments and
-infrastructure units.
-
-4. Repository Structure
-
-The project is split into three repositories:
+The project is intentionally separated into three implementation
+repositories plus this umbrella repository.
 
 dev-to-prod-promotion/
+│
+├── README.md
 │
 ├── microservices-app/
 │   ├── Jenkinsfile
@@ -176,6 +193,7 @@ dev-to-prod-promotion/
 │   └── docs/
 │
 ├── microservices-gitops/
+│   ├── README.md
 │   ├── argocd/
 │   │   ├── dev/
 │   │   ├── staging/
@@ -192,6 +210,7 @@ dev-to-prod-promotion/
 │   └── scripts/
 │
 └── infrastructure/
+    ├── README.md
     ├── environments/
     │   ├── dev/
     │   ├── staging/
@@ -204,15 +223,25 @@ dev-to-prod-promotion/
     │   └── ecr/
     └── bootstrap/
 
-5. Application Microservices
+Repositories
 
-Three services are deployed:
+Application: paycenonoli/dev-to-prod-microservices-app
+
+GitOps: paycenonoli/dev-to-prod-microservices-gitops
+
+Infrastructure: paycenonoli/dev-to-prod-infrastructure
+
+Platform overview: paycenonoli/dev-to-prod-promotion
+
+🧩 Microservices
+
+The application contains three services:
 
 Service
 
 Container Port
 
-Kubernetes Service Port
+Kubernetes Service
 
 frontend
 
@@ -232,7 +261,7 @@ order-service
 
 8082
 
-The frontend communicates with backend services through Kubernetes DNS:
+The frontend calls the backend services using Kubernetes DNS:
 
 frontend
    │
@@ -242,336 +271,288 @@ frontend
 
 Frontend endpoints:
 
-/
- /products
- /orders
- /health
+GET /
+GET /products
+GET /orders
+GET /health
 
-6. Docker and ECR Image Strategy
+🔄 CI/CD + GitOps Flow
 
-Each service is packaged as a Docker image and pushed to Amazon ECR.
+flowchart TD
+    A["Developer pushes source change"] --> B["GitHub Application Repo"]
+    B --> C["Jenkins"]
+    C --> D["Checkout"]
+    D --> E["Test"]
+    E --> F["Docker Build"]
+    F --> G["Generate Git SHA"]
+    G --> H["Push immutable images to ECR"]
+    H --> I["Update GitOps values"]
+    I --> J["Create GitOps PR"]
+    J --> K["Review / Merge"]
+    K --> L["Argo CD detects Git change"]
+    L --> M["Sync Kubernetes"]
 
-Example:
+Ownership model
 
-<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/frontend
+Component
 
-ECR repositories:
+Primary responsibility
 
-frontend
-product-service
-order-service
+GitHub App Repo
 
-Configuration:
+Source code
 
-Tag mutability: IMMUTABLE
-Scan on push: enabled
-Encryption: AES256
+Jenkins
 
-Why Immutable Tags Matter
+CI + artifact creation
+
+Amazon ECR
+
+Artifact storage
+
+GitHub GitOps Repo
+
+Desired deployment state
+
+GitHub PR
+
+Promotion/change approval
+
+Argo CD
+
+Deployment + reconciliation
+
+Kubernetes
+
+Runtime platform
+
+🔐 Immutable Image Strategy
+
+ECR was configured with immutable image tags.
 
 The pipeline initially attempted to reuse:
 
 frontend:1.1.0
 
-ECR rejected the push because the repository was configured with
-immutable tags.
+ECR rejected the push because the tag already existed.
 
-The pipeline was changed to generate the image tag from the Git commit:
+Instead, the pipeline generates a tag from the Git commit:
 
 env.IMAGE_TAG = sh(
     script: 'git rev-parse --short=7 HEAD',
     returnStdout: true
 ).trim()
 
-The resulting promotion artifact was:
+The successful promotion artifact was:
 
 07eda39
 
-Therefore:
+Therefore the application artifacts were:
 
 frontend:07eda39
 product-service:07eda39
 order-service:07eda39
 
-Why Git SHA tags?
+Why this matters
 
-They provide:
+A Git SHA tag provides:
 
-immutability
+✅ Immutability
 
-source traceability
+✅ Traceability
 
-reproducibility
+✅ Reproducibility
 
-easier rollback
+✅ Auditability
 
-auditability
+✅ Easier rollback
 
-7. Build Once, Promote the Same Artifact
+🚀 Build Once, Promote the Same Artifact
 
-One of the most important CI/CD principles demonstrated here:
+This is one of the most important principles demonstrated by the
+project.
 
-BUILD ONCE
+flowchart LR
+    A["Git Commit<br/>07eda39"] --> B["Build Once"]
+    B --> C["ECR"]
+    C --> D["DEV"]
+    D --> E["STAGING"]
+    E --> F["PRODUCTION"]
 
-07eda39
-   │
-   ├── DEV       ✅
-   ├── STAGING   ✅
-   └── PROD      ✅
+    D --> D1["✅ Healthy"]
+    E --> E1["✅ Healthy"]
+    F --> F1["✅ Healthy"]
 
-We do not rebuild the application separately for each environment.
+We do not rebuild the application for each environment.
 
-Bad pattern:
+❌ Bad pattern
 
 Build → Dev
 Build → Staging
 Build → Production
 
-Preferred pattern:
+✅ Preferred pattern
 
 Build once
-   ↓
-Create immutable artifact
-   ↓
+    ↓
+Immutable artifact
+    ↓
 Promote the same artifact
 
-This reduces the risk that the artifact tested in Staging differs from
-the artifact deployed to Production.
+This ensures the artifact tested in Staging is the artifact deployed to
+Production.
 
-8. Jenkins CI Pipeline
+🌎 Kubernetes Environment Model
 
-Jenkins is responsible primarily for CI and artifact creation.
+The lab uses one K3s cluster with namespace-based environment
+separation.
 
-GitHub
-  ↓
-Jenkins
-  ↓
-Checkout
-  ↓
-Test
-  ↓
-Docker Build
-  ↓
-Generate Git SHA image tag
-  ↓
-Push images to ECR
-  ↓
-Update GitOps repository
-  ↓
-Create Pull Request
+flowchart TB
+    K["K3s Cluster"]
 
-Jenkins responsibilities
+    K --> D["microservices-dev"]
+    K --> S["microservices-staging"]
+    K --> P["microservices-prod"]
 
-Checkout source
+    D --> D1["frontend"]
+    D --> D2["product-service"]
+    D --> D3["order-service"]
 
-Run tests
+    S --> S1["frontend"]
+    S --> S2["product-service"]
+    S --> S3["order-service"]
 
-Build Docker images
+    P --> P1["frontend"]
+    P --> P2["product-service"]
+    P --> P3["order-service"]
 
-Generate immutable image tags
+This is a lightweight lab architecture.
 
-Authenticate to ECR
+A larger production platform could use:
 
-Push images
+Separate Kubernetes clusters
 
-Update GitOps values
+Separate AWS accounts
 
-Create GitHub Pull Requests
+Separate VPCs
 
-Jenkins does not directly make production the desired state. The GitOps
-repository and Argo CD control deployment.
+Stronger network isolation
 
-9. GitOps Repository
+Kubernetes namespaces are environment boundaries in this lab, but they
+should not be described as equivalent to separate AWS accounts or
+clusters.
 
-The GitOps repository contains the desired deployment state.
+🌐 Kubernetes Networking
 
-Example:
+The external frontend request path is:
 
-environments/dev/frontend-values.yaml
-environments/staging/frontend-values.yaml
-environments/production/frontend-values.yaml
+flowchart LR
+    A["Browser / curl"] --> B["EC2 :80"]
+    B --> C["Traefik Ingress Controller"]
+    C --> D["frontend Service :8080"]
+    D --> E["frontend Pod :8080"]
 
-A values file determines which artifact should run:
+Inside Kubernetes:
 
-image:
-  repository: <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/frontend
-  tag: "07eda39"
+flowchart LR
+    F["frontend Pod"] --> P["product-service :8081"]
+    F --> O["order-service :8082"]
 
-imagePullSecrets:
-  - name: ecr-registry-secret
+Important distinction
 
-The GitOps repository answers:
+EC2 port 80 → external entry point exposed by Traefik
 
-What version should this environment be running?
+Frontend container port 8080 → application port
 
-10. Pull Request Promotion Model
+Kubernetes Service → stable internal endpoint
 
-Promotion is controlled through Git.
+Ingress → Kubernetes API resource containing routing rules
 
-Jenkins
-   │
-   ▼
-GitOps PR
-   │
-   ▼
-Review / Approval
-   │
-   ▼
-Merge
-   │
-   ▼
-Argo CD
-   │
-   ▼
-Kubernetes environment
+Traefik → Ingress Controller implementing those rules
 
-For this project:
+📜 Helm
 
-PR #4 → 07eda39 → DEV
-PR #5 → 07eda39 → STAGING
-PR #6 → staging configuration fix
-PR #7 → 07eda39 → PRODUCTION
-
-The Production PR acts as the explicit approval gate.
-
-11. Helm
-
-Helm packages each microservice as a reusable Kubernetes deployment
-unit.
+Each microservice has a Helm chart:
 
 helm/
 ├── frontend/
 ├── product-service/
 └── order-service/
 
-Each chart contains:
+Typical chart structure:
 
 Chart.yaml
 values.yaml
 templates/
-    deployment.yaml
-    service.yaml
-    ingress.yaml
+├── deployment.yaml
+├── service.yaml
+└── ingress.yaml
 
-The chart provides reusable defaults while environment-specific values
-provide overrides.
+The reusable chart contains defaults while environment files override
+them:
 
-Helm chart
-     │
-     ├── dev values
-     ├── staging values
-     └── production values
+flowchart LR
+    A["Helm Chart<br/>Reusable Defaults"] --> B["DEV Values"]
+    A --> C["STAGING Values"]
+    A --> D["PRODUCTION Values"]
 
-This avoids duplicating complete Kubernetes manifests for every
-environment.
+    B --> E["Dev Release"]
+    C --> F["Staging Release"]
+    D --> G["Production Release"]
 
-12. Kubernetes Architecture
+This avoids copying complete Kubernetes manifests for every environment.
 
-The lab uses one K3s cluster with namespace-based environment
-separation:
+🔁 GitOps Promotion
 
-K3s Cluster
-│
-├── microservices-dev
-│   ├── frontend
-│   ├── product-service
-│   └── order-service
-│
-├── microservices-staging
-│   ├── frontend
-│   ├── product-service
-│   └── order-service
-│
-└── microservices-prod
-    ├── frontend
-    ├── product-service
-    └── order-service
+Promotion is controlled through Git.
 
-This is a lightweight lab architecture.
+flowchart LR
+    A["Jenkins"] --> B["GitOps PR"]
+    B --> C["Review"]
+    C --> D["Merge"]
+    D --> E["Argo CD"]
+    E --> F["Environment"]
 
-A larger production platform could use:
+The actual promotion chain completed during the project was:
 
-separate Kubernetes clusters
+PR #4 → 07eda39 → DEV
+      ↓
+PR #5 → 07eda39 → STAGING
+      ↓
+PR #6 → Staging configuration fix
+      ↓
+PR #7 → 07eda39 → PRODUCTION
 
-separate AWS accounts
+The Production PR was the final Git-based approval gate.
 
-separate VPCs
-
-stronger network isolation
-
-Namespaces provide useful environment boundaries in this lab, but should
-not be described as equivalent to separate AWS accounts or clusters.
-
-13. Kubernetes Networking
-
-The external frontend request path is:
-
-Browser / curl
-      │
-      ▼
-EC2 :80
-      │
-      ▼
-Traefik Ingress Controller
-      │
-      ▼
-frontend Service :8080
-      │
-      ▼
-frontend Pod :8080
-
-Inside Kubernetes:
-
-frontend Pod
-     │
-     ├── product-service:8081
-     │
-     └── order-service:8082
-
-Important distinctions:
-
-EC2 port 80 is the external entry point exposed by Traefik.
-
-Frontend container port is 8080.
-
-Kubernetes Services provide stable internal endpoints.
-
-Ingress is a Kubernetes API resource containing routing rules.
-
-Traefik is the Ingress Controller that implements those rules.
-
-14. Argo CD
+🤖 Argo CD
 
 Argo CD continuously compares:
 
-Git desired state
-        VS
-Kubernetes actual state
+Git Desired State
+        ↕
+Kubernetes Actual State
 
 Architecture:
 
-GitHub GitOps
-      │
-      ▼
-   Argo CD
-      │
-      ├── Compare
-      ├── Sync
-      └── Self-heal
-      │
-      ▼
- Kubernetes
+flowchart LR
+    A["GitOps Repository"] --> B["Argo CD"]
+    B --> C["Compare"]
+    C --> D["Sync"]
+    D --> E["Kubernetes"]
+    E --> F["Actual State"]
+    F --> C
 
-The Applications are:
+Applications:
 
 microservices-dev
 microservices-staging
 microservices-prod
 
-An environment is treated as the deployment boundary for the three
+Each environment is treated as the deployment boundary for the three
 services.
 
-15. Argo CD Automated Sync and Self-Healing
+❤️ Argo CD Self-Healing
 
 The Applications use:
 
@@ -580,7 +561,7 @@ syncPolicy:
     prune: true
     selfHeal: true
 
-If Kubernetes is manually changed while Git says something different:
+Example:
 
 Git:
 replicas = 1
@@ -588,62 +569,107 @@ replicas = 1
 Kubernetes:
 replicas = 3
 
-Argo CD detects drift and restores the Git-defined state.
+Argo CD detects the drift and reconciles Kubernetes back toward Git.
 
-Self-healing was demonstrated during the project by manually changing
-the frontend replica count and observing Argo restore the desired state.
+Self-healing was demonstrated during the project.
 
-16. ECR Authentication in K3s
+🔑 ECR Authentication in K3s
 
-K3s uses containerd rather than the host Docker Engine.
+K3s uses containerd, not the host Docker Engine.
 
 Therefore:
 
-Docker Engine image store
+Docker image store
         ≠
 K3s/containerd image store
 
-A Docker image visible with:
+An image visible with:
 
 docker images
 
 is not automatically available to K3s.
 
-The project initially demonstrated this with a local image and later
-moved to ECR, which is the appropriate registry-based deployment model.
-
-Kubernetes uses:
+The registry-based deployment uses:
 
 imagePullSecrets:
   - name: ecr-registry-secret
 
-The ECR authorization token is temporary.
+ECR token incident
 
-During the project, deployment failed with:
+During deployment, a registry token expired and Kubernetes reported:
 
 403 Forbidden
 denied: Your authorization token has expired.
 
-Refreshing the Kubernetes registry secret fixed the deployment.
+Refreshing the ECR registry secret resolved the problem.
 
-For a hardened production platform, automatic ECR credential management
-should be preferred over manually refreshing registry secrets.
+For a hardened production platform, automatic ECR credential
+management should replace manually refreshed registry secrets.
 
-17. Terraform Remote State
+🏗️ Terraform + Terragrunt
 
-Terraform state is stored remotely in S3.
+Infrastructure is managed separately from application delivery.
+
+flowchart LR
+    A["Terraform Modules"] --> B["Terragrunt"]
+    B --> C["AWS"]
+
+    C --> D["VPC"]
+    C --> E["IAM"]
+    C --> F["ECR"]
+    C --> G["Kubernetes Infrastructure"]
+
+    B --> H["S3 Remote State"]
+
+Terraform
+
+Terraform is the infrastructure provisioning engine.
+
+It manages resources such as:
+
+VPC
+
+IAM
+
+ECR
+
+Kubernetes infrastructure
+
+Terragrunt
+
+Terragrunt provides orchestration and configuration around Terraform:
+
+DRY configuration
+
+Environment organization
+
+Remote state configuration
+
+Module reuse
+
+Dependencies
+
+Multi-unit execution
+
+Interview answer
+
+Terraform defines how infrastructure is created. Terragrunt helps
+organize, configure, and orchestrate Terraform across environments and
+infrastructure units.
+
+🪣 Terraform Remote State
+
+Terraform state is stored in Amazon S3.
 
 Terraform
     │
     ▼
-S3 bucket
-    │
-    ├── encryption
-    ├── versioning
-    └── native state locking
+Amazon S3
+    ├── Encryption
+    ├── Versioning
+    └── Native State Locking
 
-The root Terragrunt configuration uses an S3 remote state configuration
-similar to:
+The remote-state configuration uses:
 
 remote_state {
   backend = "s3"
@@ -657,249 +683,217 @@ remote_state {
   }
 }
 
-Remote state provides centralized, durable state storage for
-infrastructure management.
+🥚 Why the S3 Backend Was Bootstrapped Separately
 
-18. Why the Backend Bucket Is Bootstrapped Separately
+Terraform needs the S3 bucket in order to store remote state.
 
-There is a chicken-and-egg problem:
+Therefore:
 
 Terraform needs S3
        ↓
 S3 stores Terraform state
        ↓
-The S3 bucket must exist first
+Bucket must exist first
 
-A small bootstrap Terraform configuration created the state bucket
-before the normal remote backend was used.
+A small bootstrap Terraform configuration created the bucket before the
+normal remote backend was used.
 
 The bucket was configured with:
 
-versioning
+S3 versioning
 
-AES256 server-side encryption
+AES256 encryption
 
-public-access blocking
+Public access blocking
 
-19. Terraform IAM Troubleshooting Incident
+🛠️ Real Troubleshooting Incidents
 
-The bootstrap initially failed because the EC2 IAM role did not have
-every S3 permission Terraform required.
+These incidents are part of the value of this project.
 
-The important lesson:
+1. ECR Immutable Tag Failure
 
-Terraform may call several AWS APIs to manage one resource, so an IAM
-policy can appear broadly correct while still missing a required API
-action.
+Symptom
 
-Troubleshooting flow:
+The image tag '1.1.0' already exists
+and cannot be overwritten because the tag is immutable.
 
-Terraform error
-     ↓
-Identify denied AWS API action
-     ↓
-Update IAM policy
-     ↓
-terraform plan
-     ↓
-Review
-     ↓
-terraform apply
+Root cause
 
-The preferred approach is to add the specific missing permission rather
-than immediately granting broad administrator access.
+ECR was correctly preventing an existing artifact tag from being
+overwritten.
 
-20. Terraform Taint Incident
+Fix
 
-During the S3 bootstrap, the bucket was created but a later operation
-failed. Terraform marked the bucket as tainted.
+Changed Jenkins to use Git SHA tags:
 
-A subsequent plan proposed:
+07eda39
 
--/+ destroy and recreate
+Lesson
 
-That plan was not applied.
+Never design a CI/CD pipeline around overwriting immutable production
+artifacts.
 
-Instead:
+2. K3s Could Not Use Local Docker Image
 
-terraform untaint aws_s3_bucket.terraform_state
+Root cause
+
+Docker Engine and K3s/containerd maintain separate image stores.
+
+Fix
+
+Move to registry-based deployment using ECR.
+
+Lesson
+
+Container images exist inside a runtime’s image store or registry;
+Docker Engine and Kubernetes’ container runtime are not automatically
+the same image store.
+
+3. ECR Authentication Expired
+
+Symptom
+
+403 Forbidden
+denied: Your authorization token has expired.
+
+Root cause
+
+The ECR authorization token used by the Kubernetes registry secret had
+expired.
+
+Fix
+
+Refresh the registry secret.
+
+Production improvement
+
+Use automatic credential management rather than manually refreshed
+tokens.
+
+4. Staging Backend ImagePullBackOff
+
+Symptom
+
+frontend          → Running
+product-service   → ImagePullBackOff
+order-service     → ImagePullBackOff
+
+Root cause
+
+The staging product-values.yaml and order-values.yaml files were
+empty.
+
+Helm therefore fell back to chart defaults instead of the intended ECR
+repositories.
+
+Fix
+
+Configured:
+
+image:
+  repository: <ECR repository>
+  tag: "07eda39"
+
+imagePullSecrets:
+  - name: ecr-registry-secret
 
 Then:
 
-terraform plan
-
-was reviewed again.
-
-The final safe plan avoided destroying the existing bucket.
-
-Operational lesson:
-
-Always inspect Terraform plans, especially destroy/replacement
-actions, before applying them.
-
-This is particularly important for:
-
-S3 buckets
-
-databases
-
-production networking
-
-persistent storage
-
-IAM resources
-
-21. Production-Style Incident: Empty Staging Values
-
-During Staging promotion, Argo CD initially showed:
-
-STAGING
-Degraded
-
-The frontend was healthy, but:
-
-product-service → ImagePullBackOff
-order-service   → ImagePullBackOff
-
-The root cause was configuration, not Kubernetes.
-
-The staging values files for the backend services were empty.
-
-Because the environment-specific values were missing, Helm fell back to
-chart defaults:
-
-product-service
-order-service
-
-instead of the ECR repositories.
-
-The fix was made through Git:
-
-Fix values
-   ↓
 Commit
-   ↓
-Pull Request
-   ↓
+  ↓
+PR
+  ↓
 Merge
-   ↓
-Argo CD reconciliation
-   ↓
+  ↓
+Argo CD
+  ↓
 Staging Healthy
 
-This incident demonstrates why configuration is part of the application
-delivery system and why GitOps makes configuration changes auditable.
+Lesson
 
-22. Final Production Promotion
+Configuration is part of the deployment artifact. GitOps makes
+configuration changes visible, reviewable and auditable.
 
-The same immutable artifact progressed through every environment:
+5. Terraform IAM AccessDenied
 
-07eda39
-   │
-   ├── DEV       ✅ Healthy
-   │
-   ├── STAGING   ✅ Healthy
-   │
-   └── PROD      ✅ Healthy
+Root cause
 
-The Production GitOps PR was:
+The EC2 IAM role did not initially have every S3 API permission
+Terraform required.
 
-promote 07eda39 to production
+Troubleshooting approach
 
-After merge, Argo CD reported:
+Terraform error
+      ↓
+Identify denied AWS API
+      ↓
+Add specific permission
+      ↓
+terraform plan
+      ↓
+Review
+      ↓
+terraform apply
 
-APP HEALTH:  Healthy
-SYNC STATUS: Synced to main
+Lesson
 
-The Production environment contained:
+Prefer least privilege and troubleshoot the exact AWS API action
+instead of immediately granting AdministratorAccess.
 
-frontend
-product-service
-order-service
+6. Terraform Tainted Resource
 
-with the frontend configured for three replicas.
+Symptom
 
-23. Why GitOps Instead of Jenkins kubectl apply?
+Terraform proposed:
 
-Traditional deployment:
+-/+ destroy and recreate
 
-Jenkins
-   ↓
-kubectl apply
-   ↓
-Kubernetes
+for the existing S3 bucket.
 
-GitOps deployment:
+Action
 
-Jenkins
-   ↓
-GitOps PR
-   ↓
-Merge
-   ↓
-Argo CD
-   ↓
-Kubernetes
+The destructive plan was not applied.
 
-GitOps benefits:
+The resource was safely untainted:
 
-audit trail
+terraform untaint aws_s3_bucket.terraform_state
 
-pull-request approval
+Then the plan was reviewed again.
 
-Git-based rollback
+Lesson
 
-drift detection
+Always investigate Terraform destroy/replacement actions before
+applying a plan.
 
-reconciliation
+↩️ Rollback Strategy
 
-clear separation of CI and CD
+Helm
 
-reduced direct cluster access for Jenkins
-
-24. Why Jenkins Does Not Deploy Directly
-
-The responsibilities are intentionally separated:
-
-Jenkins
-  = Build / Test / Package / Publish
-
-Argo CD
-  = Deploy / Reconcile / Self-heal
-
-Jenkins creates and publishes the artifact and proposes a GitOps change.
-
-Argo CD observes the GitOps repository and makes Kubernetes match the
-approved desired state.
-
-This reduces the amount of Kubernetes access required by Jenkins.
-
-25. Rollback Strategy
-
-Helm provides release history:
+Inspect release history:
 
 helm history frontend -n microservices-dev
 
-A rollback moves the release back to a known-good revision.
+Helm can roll back to a known-good release revision.
 
-In a GitOps environment, another preferred rollback mechanism is to
-revert the GitOps change:
+GitOps
 
-Bad GitOps commit
+For GitOps deployments, a preferred rollback approach is often:
+
+Bad GitOps Commit
        ↓
-Git revert
+Git Revert
        ↓
 Argo CD
        ↓
-Known-good Kubernetes state
+Known-Good Kubernetes State
 
-The key idea is to make rollback reproducible and auditable.
+This preserves an auditable change history.
 
-26. Verification and Testing
+🧪 Testing and Verification
 
-Three levels of testing were used.
+The project used three levels of validation.
 
-External routing
+1. External routing
 
 curl http://localhost/
 
@@ -910,15 +904,15 @@ EC2
  → frontend Service
  → frontend Pod
 
-Internal service connectivity
+2. Internal service connectivity
 
-A temporary curl pod was used to test:
+A temporary curl pod validated:
 
 frontend/network
  → product-service:8081
  → order-service:8082
 
-End-to-end flow
+3. End-to-end application flow
 
 curl http://localhost/products
 curl http://localhost/orders
@@ -935,7 +929,7 @@ Backend Services
   ↓
 Backend Pods
 
-27. Useful Troubleshooting Commands
+🔎 Useful Troubleshooting Commands
 
 Kubernetes
 
@@ -979,13 +973,14 @@ terragrunt init
 terragrunt plan
 terragrunt apply
 
-28. Security Considerations
+🔒 Security Considerations
 
-This is a lab, but the production lessons are important.
+This is a lab implementation, but the following production principles
+apply.
 
 IAM
 
-Use least privilege rather than:
+Use least privilege instead of:
 
 AdministratorAccess
 
@@ -993,23 +988,25 @@ ECR
 
 Use:
 
-immutable tags
-scan on push
+Immutable tags
+Scan on push
+Encryption
 
 Secrets
 
 Never commit:
 
-passwords
-tokens
+Passwords
+Tokens
 AWS credentials
-private keys
+Private keys
 
 Jenkins
 
-Adding Jenkins to the Docker group effectively provides root-equivalent
-control over the host. Acceptable for this lab, but a serious security
-boundary in production.
+Adding Jenkins to the Docker group effectively gives Jenkins
+root-equivalent control over the host.
+
+Acceptable for this lab; a major security consideration in production.
 
 Kubernetes
 
@@ -1021,112 +1018,97 @@ NetworkPolicies
 
 Pod Security Standards
 
-resource requests/limits
+Resource requests/limits
 
 Horizontal Pod Autoscaling
 
 PodDisruptionBudgets
 
-secrets management
+Secrets management
 
 TLS
 
-image signing
+Image signing
 
-vulnerability gates
+Vulnerability gates
 
-workload identity
+Workload identity
 
-29. Production Improvements
+🚀 Production Improvements
 
-A real production implementation could add:
+If this lab were expanded into a real production platform:
 
-Separate AWS accounts per environment.
+Separate AWS accounts per environment
 
-Separate Kubernetes clusters where appropriate.
+Separate Kubernetes clusters where appropriate
 
-Automatic ECR credential management.
+Automatic ECR credential management
 
-Production ingress/load balancer architecture.
+Production ingress/load balancer architecture
 
-TLS certificates through ACM or cert-manager.
+TLS through ACM or cert-manager
 
-AWS Secrets Manager / External Secrets.
+AWS Secrets Manager / External Secrets
 
-Kubernetes NetworkPolicies.
+Kubernetes NetworkPolicies
 
-CPU/memory requests and limits.
+CPU/memory requests and limits
 
-Horizontal Pod Autoscaling.
+Horizontal Pod Autoscaling
 
-PodDisruptionBudgets.
+PodDisruptionBudgets
 
-Trivy or another vulnerability gate.
+Trivy or equivalent vulnerability gates
 
-Image signing and verification.
+Image signing and verification
 
-Jenkins ephemeral agents.
+Jenkins ephemeral agents
 
-Centralized logging.
+Centralized logging
 
-Prometheus/Grafana monitoring.
+Prometheus/Grafana monitoring
 
-Distributed tracing.
+Distributed tracing
 
-Argo CD Projects and RBAC.
+Argo CD Projects and RBAC
 
-Required GitHub reviewers for production.
+Required GitHub reviewers for production
 
-Jira integration for change tracking.
+Jira integration
 
-Automated deployment notifications.
+Automated deployment notifications
 
-30. Jira / Change Management
+📋 Jira / Change Management
 
 Jira can sit above the Git workflow as the work-management layer.
 
-Example:
-
-Jira ticket
-    │
-    ▼
-Feature branch
-    │
-    ▼
-Pull Request
-    │
-    ▼
-Jenkins CI
-    │
-    ▼
-GitOps PR
-    │
-    ▼
-Production approval
-    │
-    ▼
-Argo CD
+flowchart LR
+    A["Jira Ticket"] --> B["Feature Branch"]
+    B --> C["Pull Request"]
+    C --> D["Jenkins CI"]
+    D --> E["GitOps PR"]
+    E --> F["Production Approval"]
+    F --> G["Argo CD"]
 
 Jira is not responsible for running Terraform.
 
 Its value is:
 
-work tracking
+Work tracking
 
-change management
+Change management
 
-traceability
+Traceability
 
-linking requirements to branches, commits and PRs
+Linking requirements to branches/commits/PRs
 
-deployment/change visibility
+Deployment/change visibility
 
-GitHub can remain the source-control platform. There is no requirement
-to move to Bitbucket simply because Jira is being used.
+GitHub can remain the source-control platform.
 
-31. Senior DevOps Interview Explanation
+🎤 Senior DevOps Interview Answer
 
-A concise interview answer:
+A strong concise explanation:
 
 I designed a GitOps-based Dev-to-Production promotion workflow using
 Jenkins, Docker, Amazon ECR, Helm, Kubernetes/K3s, and Argo CD.
@@ -1142,153 +1124,93 @@ automated sync and self-healing enabled. Infrastructure is managed
 separately with Terraform modules and Terragrunt, using an encrypted,
 versioned S3 remote state backend with locking.
 
-32. Senior DevOps Interview Questions
+💬 Interview Questions You Should Be Ready For
 
-CI/CD
-
-Why use Git SHA tags?
-
-They create immutable, traceable artifacts that map directly to a source
-commit.
-
-Why not use latest?
-
-latest is mutable and makes deployments difficult to reproduce and
-audit.
-
-Why did ECR reject the 1.1.0 push?
-
-The repository was configured with immutable tags, so an existing tag
-could not be overwritten.
-
-What is the difference between CI and CD?
-
-CI validates and packages changes. CD delivers approved artifacts to
-environments.
-
-GitOps
-
-Why use a separate GitOps repository?
-
-It separates source code from deployment configuration and provides a
-clear desired-state repository.
-
-Why doesn’t Jenkins run kubectl apply?
-
-Argo CD owns deployment and reconciliation. Jenkins does not need direct
-deployment access to the cluster.
-
-What happens if someone manually changes Production?
-
-Argo CD detects the drift and, with self-healing enabled, reconciles it
-back to Git.
-
-Kubernetes
-
-What does a Service do?
-
-It provides a stable network endpoint and directs traffic to matching
-Pods.
-
-What does an Ingress do?
-
-It defines HTTP/HTTPS routing rules into the cluster. The Ingress
-Controller implements those rules.
-
-What is Traefik?
-
-The Ingress Controller used by this K3s installation.
-
-Why can frontend reach product-service:8081?
-
-Kubernetes DNS resolves the Service name inside the cluster.
-
-Helm
-
-Why use Helm?
-
-It packages Kubernetes resources into reusable templates and allows
-environment-specific values without duplicating complete manifests.
-
-What is the difference between chart defaults and environment values?
-
-values.yaml contains defaults. Environment-specific values override
-those defaults.
-
-Terraform
-
-Terraform vs Terragrunt?
-
+<details>
+<summary>
+<strong>Why use Git SHA tags instead of latest?</strong>
+</summary>
+Git SHA tags are immutable and traceable to a specific source revision.
+`latest` is mutable and makes reproducibility, auditing and rollback
+harder.
+</details>
+<details>
+<summary>
+<strong>Why did ECR reject the 1.1.0 push?</strong>
+</summary>
+The repository was configured with immutable tags, so an existing
+`1.1.0` tag could not be overwritten.
+</details>
+<details>
+<summary>
+<strong>Why use a separate GitOps repository?</strong>
+</summary>
+It separates application source code from deployment configuration and
+establishes a clear desired-state repository for environments.
+</details>
+<details>
+<summary>
+<strong>Why doesn’t Jenkins run kubectl apply?</strong>
+</summary>
+Argo CD owns deployment and reconciliation. Jenkins creates and
+publishes artifacts and proposes GitOps changes rather than requiring
+direct cluster deployment privileges.
+</details>
+<details>
+<summary>
+<strong>What happens if someone manually changes Production?</strong>
+</summary>
+Argo CD detects the drift and, because self-healing is enabled,
+reconciles the cluster back to the state defined in Git.
+</details>
+<details>
+<summary>
+<strong>Why use Helm?</strong>
+</summary>
+Helm provides reusable Kubernetes templates while allowing
+environment-specific configuration through values files.
+</details>
+<details>
+<summary>
+<strong>Terraform vs Terragrunt?</strong>
+</summary>
 Terraform provisions infrastructure. Terragrunt organizes and
-orchestrates Terraform configurations and environments.
+orchestrates Terraform configurations, environments, dependencies and
+shared configuration.
+</details>
+<details>
+<summary>
+<strong>Why use remote Terraform state?</strong>
+</summary>
+Remote state provides centralized, durable and shareable state while
+supporting encryption, versioning and locking.
+</details>
+<details>
+<summary>
+<strong>What do you do when Terraform wants to destroy a critical
+resource?</strong>
+</summary>
+Stop and investigate the plan. Identify why Terraform believes
+replacement is required and never blindly apply a destructive plan.
+</details>
+<details>
+<summary>
+<strong>How would you improve the lab for production?</strong>
+</summary>
+I would add stronger environment isolation, automatic registry
+authentication, secrets management, TLS, network policies, resource
+controls, vulnerability scanning, image signing, observability, RBAC and
+controlled production approvals.
+</details>
 
-Why use remote state?
+🏆 What This Project Demonstrates
 
-It centralizes state and makes it durable and shareable while supporting
-encryption, versioning and locking.
+This project is intentionally more than:
 
-Why S3 versioning?
+“I know Docker, Kubernetes and Jenkins.”
 
-It provides historical versions of Terraform state and can help recover
-from accidental state changes.
-
-What should you do when Terraform proposes destroying a critical resource?
-
-Stop and investigate. Never blindly apply the plan.
-
-33. Failure Scenarios Demonstrated
-
-Problem
-
-Root Cause
-
-Resolution
-
-ECR tag push rejected
-
-Immutable tag already existed
-
-Use Git SHA tags
-
-K3s couldn’t use Docker image
-
-Docker and K3s containerd use separate image stores
-
-Use a registry such as ECR
-
-ECR 403
-
-Token expired
-
-Refresh registry authentication
-
-Staging backend ImagePullBackOff
-
-Empty Helm values files
-
-Configure ECR repository/tag/pull secret through GitOps
-
-Terraform AccessDenied
-
-Missing IAM permission
-
-Identify required AWS API permission
-
-Terraform planned replacement
-
-Resource was tainted after partial failure
-
-Inspect plan and untaint safely
-
-Argo deployment initially stale
-
-GitOps change had not yet reconciled
-
-Refresh/wait for Argo reconciliation
-
-34. What This Project Demonstrates
-
-This project demonstrates understanding of the complete delivery system:
+It demonstrates understanding of the complete software delivery
+lifecycle:
 
 SOURCE
   ↓
@@ -1324,62 +1246,80 @@ GitHub GitOps Repo
         ↓
     Kubernetes
 
-35. Final State
+🥇 Final Promotion Result
 
-The completed promotion:
+The exact same immutable artifact successfully progressed through all
+environments:
 
-                    Git Commit
-                     07eda39
-                         │
-                         ▼
-                  ┌─────────────┐
-                  │   Jenkins   │
-                  └──────┬──────┘
-                         │
-                         ▼
-                       ECR
-             ┌───────────┼───────────┐
-             ▼           ▼           ▼
-         frontend     product      order
-          07eda39      07eda39     07eda39
-             │           │           │
-             └───────────┼───────────┘
-                         ▼
-                     GitOps PRs
-                         │
-             ┌───────────┼───────────┐
-             ▼           ▼           ▼
-           DEV       STAGING       PROD
-             │           │           │
-             ▼           ▼           ▼
-          Healthy      Healthy      Healthy
-             │           │           │
-             └───────────┼───────────┘
-                         ▼
-                      Argo CD
-                         │
-                         ▼
-                       K3s
+flowchart LR
+    A["Git Commit<br/><b>07eda39</b>"]
+    B["Jenkins<br/>Build Once"]
+    C["Amazon ECR<br/>Immutable Images"]
+    D["DEV<br/>✅ Healthy"]
+    E["STAGING<br/>✅ Healthy"]
+    F["PRODUCTION<br/>✅ Healthy"]
 
-Result: the exact same immutable application artifact successfully
-progressed from Dev → Staging → Production through GitOps-controlled
-promotion.
+    A --> B --> C --> D --> E --> F
 
-36. Repository Links
+Final Production State
 
-Application repository:
+Component
 
-https://github.com/paycenonoli/dev-to-prod-microservices-app
+Status
 
-GitOps repository:
+Application source
 
-https://github.com/paycenonoli/dev-to-prod-microservices-gitops
+✅ Complete
 
-Infrastructure repository:
+Docker
 
-https://github.com/paycenonoli/dev-to-prod-infrastructure
+✅ Complete
 
-37. Ten Key Takeaways
+Amazon ECR
+
+✅ Complete
+
+Helm
+
+✅ Complete
+
+GitOps
+
+✅ Complete
+
+Jenkins CI
+
+✅ Complete
+
+Argo CD CD
+
+✅ Complete
+
+Dev promotion
+
+✅ Healthy
+
+Staging promotion
+
+✅ Healthy
+
+Production promotion
+
+✅ Healthy
+
+Terraform/Terragrunt
+
+✅ Complete
+
+Production Argo Application
+
+🟢 Healthy
+
+Production GitOps state
+
+🟢 Synced
+
+🧠 Ten Key Takeaways
 
 If you remember only ten things:
 
@@ -1406,56 +1346,42 @@ Always investigate Terraform destroy/replacement plans.
 Troubleshooting is part of DevOps engineering—not a failure of the
 design.
 
-Project Status
+🔗 Project Repositories
 
-Area
+Repository
 
-Status
+Purpose
 
-Application source
+Application
 
-Complete
-
-Docker
-
-Complete
-
-Amazon ECR
-
-Complete
-
-Helm
-
-Complete
+Source code + Jenkins CI
 
 GitOps
 
-Complete
+Helm + environment values + Argo CD
 
-Jenkins CI
+Infrastructure
 
-Complete
+Terraform + Terragrunt
 
-Argo CD CD
+Platform Overview
 
-Complete
+Architecture + complete project story
 
-Dev promotion
+📊 Project Status
 
-Complete
+Application CI: ✅ Complete
+Docker: ✅ Complete
+Amazon ECR: ✅ Complete
+Helm: ✅ Complete
+GitOps: ✅ Complete
+Jenkins CI: ✅ Complete
+Argo CD CD: ✅ Complete
+Dev: ✅ Healthy
+Staging: ✅ Healthy
+Production: ✅ Healthy
+Terraform/Terragrunt: ✅ Complete
 
-Staging promotion
-
-Complete
-
-Production promotion
-
-Complete
-
-Terraform/Terragrunt
-
-Complete
-
-Production GitOps health
-
-Healthy
+Built as a hands-on Senior DevOps portfolio project focused on
+CI/CD, GitOps, Kubernetes, AWS, Infrastructure as Code, promotion
+strategies, and real-world troubleshooting.
